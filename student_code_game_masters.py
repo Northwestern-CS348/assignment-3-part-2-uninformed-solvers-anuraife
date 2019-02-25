@@ -28,13 +28,34 @@ class TowerOfHanoiGame(GameMaster):
         indicating the smallest disk stacked on top of the larger ones.
 
         For example, the output should adopt the following format:
+        
         ((1,2,5),(),(3, 4))
 
         Returns:
             A Tuple of Tuples that represent the game state
         """
         ### student code goes here
-        pass
+        pegs = ["peg1","peg2","peg3"]
+        result = []
+        
+        for peg in pegs:
+            ask = parse_input("fact: (on ?disk " + peg + ")")
+            bindings = self.kb.kb_ask(ask)
+            
+            pegTuple = []
+            
+            if bindings:
+                for binding in bindings:
+                    disk = int(binding['?disk'][-1])
+                    pegTuple.append(disk)
+                pegTuple.sort()
+            
+            result.append(tuple(pegTuple))
+        
+        return tuple(result)
+        
+        
+        
 
     def makeMove(self, movable_statement):
         """
@@ -53,7 +74,38 @@ class TowerOfHanoiGame(GameMaster):
             None
         """
         ### Student code goes here
-        pass
+        if movable_statement.predicate == "movable":
+            disk = str(movable_statement.terms[0])
+            initialPeg = str(movable_statement.terms[1])
+            finalPeg = str(movable_statement.terms[2])
+            
+            #disk is no longer on initial peg
+            self.kb.kb_retract(parse_input("fact: (on " + disk + " " + initialPeg + ")"))
+
+            #to be movable, disk must be on top of peg. It no longer is.
+            self.kb.kb_retract(parse_input("fact: (top " + disk + " " + initialPeg + ")"))
+
+            #There could either be a new top of the peg (which nothing is on top of now) OR the peg is empty
+            newTop = self.kb.kb_ask(parse_input("fact: (onTop " + disk + " ?disk2)"))
+            if newTop:
+                self.kb.kb_retract(parse_input("fact: (onTop " + disk + " " + newTop[0]['?disk2'] + ")"))
+                self.kb.kb_assert(parse_input("fact: (top " + newTop[0]['?disk2'] + " " + initialPeg + ")"))
+            else:
+                self.kb.kb_assert(parse_input("fact: (empty " + initialPeg + ")"))
+
+            #now the disk is on the final peg
+            self.kb.kb_assert(parse_input("fact: (on " + disk + " " + finalPeg + ")"))
+            
+            #the disk could now be onTop of the old top of the final peg OR the final peg is no longer empty
+            oldTop = self.kb.kb_ask(parse_input("fact: (top ?disk " + finalPeg + ")"))
+            if oldTop:
+                self.kb.kb_retract(parse_input("fact: (top " + oldTop[0]['?disk'] + " " + finalPeg + ")"))
+                self.kb.kb_assert(parse_input("fact: (onTop " + disk + " " + oldTop[0]['?disk'] + ")"))
+            else:
+                self.kb.kb_retract(parse_input("fact: (empty " + finalPeg + ")"))
+            self.kb.kb_assert(parse_input("fact: (top " + disk + " " + finalPeg + ")"))
+
+        return
 
     def reverseMove(self, movable_statement):
         """
@@ -100,7 +152,24 @@ class Puzzle8Game(GameMaster):
             A Tuple of Tuples that represent the game state
         """
         ### Student code goes here
-        pass
+        rows = ["pos1", "pos2", "pos3"]
+        result = []
+        rowTuple = [0,0,0]
+        for row in rows:
+            ask = parse_input("fact: (position ?tile ?posx " + row + ")")
+            bindings = self.kb.kb_ask(ask)
+            if bindings:
+                for binding in bindings:
+                    tile = binding['?tile']
+                    posx = int(binding['?posx'][-1])
+                    if tile == "empty":
+                        tileNum = -1
+                    else:
+                        tileNum = int(tile[-1])
+                    rowTuple[posx-1] = tileNum
+                result.append(tuple(rowTuple))
+        
+        return tuple(result)
 
     def makeMove(self, movable_statement):
         """
@@ -119,7 +188,23 @@ class Puzzle8Game(GameMaster):
             None
         """
         ### Student code goes here
-        pass
+        if movable_statement.predicate == "movable":
+            tile = str(movable_statement.terms[0])
+            initPosx = str(movable_statement.terms[1])
+            initPosy = str(movable_statement.terms[2])
+            finalPosx = str(movable_statement.terms[3])
+            finalPosy = str(movable_statement.terms[4])
+            
+            #tile is no longer at initial position
+            self.kb.kb_retract(parse_input("fact: (position " + tile + " " + initPosx + " " + initPosy +")"))
+            
+            #the empty space has now moved
+            self.kb.kb_retract(parse_input("fact: (position empty " + finalPosx + " " + finalPosy +")"))
+            self.kb.kb_assert(parse_input("fact: (position empty " + initPosx + " " + initPosy +")"))
+            
+            #tile moved to final position
+            self.kb.kb_assert(parse_input("fact: (position " + tile + " " + finalPosx + " " + finalPosy +")"))
+            
 
     def reverseMove(self, movable_statement):
         """
